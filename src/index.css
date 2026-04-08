@@ -1,0 +1,23 @@
+/* global styles */
+:root {
+    --primary-color: rgb(10, 65, 102);
+    --primary-color-light: rgba(10, 65, 102, 0.1);
+    --secondary-color: #e5273c;
+    --text-color: #333;
+}
+
+
+body {
+    margin: 0;
+    font-family: 'Roboto', sans-serif;
+}
+
+.nav-link {
+    color: white;
+    text-decoration: none;
+    margin: 0 15px;
+}
+
+.nav-link.active {
+    color: var(--secondary-color);
+}

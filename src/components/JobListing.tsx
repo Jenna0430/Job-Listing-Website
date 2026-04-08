@@ -1,0 +1,52 @@
+import { Card, CardContent, Button } from "@mui/material"
+import { useState } from "react"
+import { Link } from "react-router-dom";
+import type { JSX } from "react";
+
+interface JobListingProps {
+    job: {
+        id: number;
+        type: string;
+        title: string;
+        description: string;
+        salary: number | string;
+        location: string;
+    }
+}
+export type job = JobListingProps["job"];
+
+function JobListing({ job }: JobListingProps): JSX.Element {
+
+  const [showFullDesc, setShowFullDesc] = useState(false);
+
+  let description: string = job.description;
+  if (!showFullDesc && description.length > 90) {
+    description = description.substring(0, 90) + "...";
+  }
+
+  return (
+    <Card  sx={{ width:"100%", boxShadow: "1px 1px 5px var(--primary-color)" }}>
+      <CardContent>
+        <p>{job.type}</p>
+        <h2>{job.title}</h2>
+        <p>{description}</p>
+        <button style={{ border: "none", color: "var(--secondary-color)", backgroundColor: "white" }} onClick={() => setShowFullDesc((prev) => !prev)}>
+          {showFullDesc ? "Show Less" : "Show More"}
+        </button>
+        <h3>Salary: {job.salary}/Year</h3>
+        <p>{job.location}</p>
+
+        <Link to={`/jobs/${job.id}`} style={{ textDecoration: "none" }}>
+        <Button
+          sx={{ backgroundColor: "var(--primary-color)", color: "white" }}
+          variant="contained"
+        >
+          Apply Now
+        </Button>
+        </Link>
+      </CardContent>
+    </Card>
+  )
+}
+
+export default JobListing
