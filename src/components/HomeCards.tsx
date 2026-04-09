@@ -3,8 +3,10 @@ import Button from "@mui/material/Button"
 import Card from "@mui/material/Card"
 import type { JSX } from "react"
 import { Link } from "react-router-dom"
+import { useAuth } from "../context/AuthContext"
 
 function HomeCards(): JSX.Element { 
+    const {user, role, openAuthModal} = useAuth();
     return (
         <section>
          <div style={{ display: "flex", justifyContent: "center", gap: "20px", padding: "40px" }}>
@@ -30,11 +32,32 @@ function HomeCards(): JSX.Element {
                 <p>List your job openings and reach thousands of qualified candidates.</p>
 
                 <CardActions>
-                     <Link to="/add-job">
-                    <Button sx={{ backgroundColor: "var(--primary-color)", color: "white" }} variant="contained">
-                        Add Jobs
-                    </Button>
-                    </Link>
+                    {role === "employer" ? (
+                        <Link to="/add-job">
+                        <Button
+                            sx={{ backgroundColor: "var(--primary-color)", color: "white" }}
+                            variant="contained"
+                        >
+                            Add Job
+                        </Button>
+                        </Link>
+                        ) : role === "applicant" ? (
+                        <Button 
+                            variant="contained"
+                            disabled
+                            title={user ? "Only employers can post jobs" : "Sign in as an employer to post jobs"}
+                            sx={{ backgroundColor: "var(--primary-color)", color: "white", cursor: "not-allowed" }}>
+                            Add Jobs
+                        </Button>
+                    ): (
+                         <Button
+                            variant="contained"
+                            onClick={openAuthModal}
+                            sx={{ backgroundColor: "var(--primary-color)", color: "white" }}
+                            >
+                            Add Job
+                            </Button>
+                       ) }
                 </CardActions>
                 </CardContent>
             </Card>

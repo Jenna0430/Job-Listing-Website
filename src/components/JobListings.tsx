@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import JobListing from "./JobListing"
-import { Grid, Box, CircularProgress } from "@mui/material"
+import { Grid, Box, CircularProgress, Typography } from "@mui/material"
 import type { JSX } from "react";
-import type { job } from "./JobListing";
-import axiosInstance from "../api/AxiosInstance";
-import axios from "axios";
+import type { Job } from "../type/job.types";
+
+import { useAuth } from "../context/AuthContext";
+import supabase from "../api/SupabaseClient";
 
 interface JobListingsProps {
   isHomePage?: boolean;
@@ -12,35 +13,51 @@ interface JobListingsProps {
 
 function JobListings({ isHomePage = false }: JobListingsProps):  JSX.Element {
 
-  const [listJobs, setListJobs] = useState<job[]>([]);
+  const { user, role } = useAuth();
+  const [listJobs, setListJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
-  const fetchJobs = async (): Promise<void> => {
-    try {
-      const { data } = await axiosInstance.get<job[]>("/jobs");
-      setListJobs(isHomePage ? data.slice(0, 3) : data);
-      setLoading(false);
-      } catch (error) {
-        if(axios.isAxiosError(error)) {
-          throw new Error(`Error fetching jobs: ${error.message}`);
-        } else {
-          throw new Error(`Unexpected error: ${error}`);
+   useEffect(() => {
+    const fetchJobs = async (): Promise<void> => {
+        setLoading(true);
+        setFetchError(null);
+
+        let query = supabase.from("jobs").select("*, companies(*)").order("created_at", { ascending: false });
+
+        if (role === "employer" && user) {
+          query = query.eq("posted_by", user.id); // only their jobs
         }
-      } finally {(() => {
+
+        if (isHomePage) { 
+          query = query.limit(3); // only recent 3 for homepage
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+          setFetchError(error.message);
+          setLoading(false);
+          return;
+        }
+          
+        setListJobs(data ?? []);
         setLoading(false);
-       })()}
-   };
 
-  useEffect(() => {
-    fetchJobs();
-  }, [isHomePage]);
+      }
+        
+      fetchJobs();
+    }, [isHomePage, role, user]);
 
+       
   return (
     <Box sx={{ padding: "10px 40px 60px", backgroundColor: "var(--primary-color-light)", color: "var(--text-color)"}}>
       
       <div style={{ textAlign: "center", marginBottom: "10px"}}>
         <h1>{isHomePage ? "Recent Jobs" : "Browse Jobs"}</h1>
-        <p>Explore our latest job openings and find your next career opportunity.</p>
+        <p>{role === "employer"
+          ? "Manage your job postings and view applications."
+          : "Explore our latest job openings and find your next career opportunity."}</p>
       </div>
 
       <Grid container spacing={3} sx={{ marginTop: "20px" }}>
@@ -49,6 +66,18 @@ function JobListings({ isHomePage = false }: JobListingsProps):  JSX.Element {
          <Box sx={{ display: "flex", justifyContent: "center", padding: "40px" }}>
           <CircularProgress sx={{ color: "var(--primary-color)" }} />
         </Box>
+        ) :  fetchError ? (
+           <Box sx={{ textAlign: "center", width: "100%", padding: "40px" }}>
+            <Typography color="error">{fetchError}</Typography>
+          </Box>
+        ) : listJobs.length === 0 ? (
+            <Box sx={{ textAlign: "center", width: "100%", padding: "40px" }}>
+                <Typography>
+                  {role === "employer"
+                    ? "You have not posted any jobs yet."
+                    : "No jobs available at the moment."}
+                </Typography>
+              </Box>
         ) : (
           <>
           {listJobs.map((job) => (
