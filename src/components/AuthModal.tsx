@@ -13,6 +13,7 @@ function AuthModal({ open, onClose }: AuthModalProps): JSX.Element {
 
   const [tab, setTab] = useState<0 | 1>(0); // 0 = Sign In, 1 = Sign Up
   const [email, setEmail] = useState("");
+  const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"employer" | "applicant">("applicant");
   const [error, setError] = useState<string | null>(null);
@@ -20,6 +21,7 @@ function AuthModal({ open, onClose }: AuthModalProps): JSX.Element {
   const [emailSent, setEmailSent] = useState(false);
 
   const resetForm = (): void => {
+    setFullName("");
     setEmail("");
     setPassword("");
     setError(null);
@@ -39,7 +41,7 @@ function AuthModal({ open, onClose }: AuthModalProps): JSX.Element {
 
     const result = tab === 0
       ? await signIn(email, password)
-      : await signUp(email, password, role);
+      : await signUp(email, password, role, fullName);
 
     if(result === "A confirmation email has been sent. Please check your inbox.") { 
       setLoading(false);
@@ -96,7 +98,7 @@ function AuthModal({ open, onClose }: AuthModalProps): JSX.Element {
         ) : (
           <>
           <Typography variant="h5" sx={{ fontWeight: "bold", marginBottom: "8px" }}>
-            Welcome to ReactJobs
+            Welcome to FindJobs
           </Typography>
 
         
@@ -106,6 +108,15 @@ function AuthModal({ open, onClose }: AuthModalProps): JSX.Element {
           </Tabs>
 
           <Box component="form" onSubmit={handleSubmit} sx={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+
+            <TextField
+              label="Full Name"
+              type="text"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              fullWidth
+              required
+            />
             <TextField
               label="Email"
               type="email"

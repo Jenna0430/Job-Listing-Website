@@ -19,6 +19,11 @@ function JobListings({ isHomePage = false }: JobListingsProps):  JSX.Element {
   const [fetchError, setFetchError] = useState<string | null>(null);
 
    useEffect(() => {
+
+    if(!user && !loading) {
+      setListJobs([]);
+    }
+
     const fetchJobs = async (): Promise<void> => {
         setLoading(true);
         setFetchError(null);

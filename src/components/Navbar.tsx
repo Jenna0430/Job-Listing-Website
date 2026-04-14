@@ -7,7 +7,7 @@ import type { NavLinkProps } from 'react-router-dom';
 
 
 function Navbar(): JSX.Element {
-  const { user, role, signOut, openAuthModal } = useAuth();
+  const { user, role, signOut, openAuthModal, fullName } = useAuth();
 
 
   const activeStyle: NavLinkProps['className'] = ({ isActive }) =>
@@ -32,8 +32,13 @@ function Navbar(): JSX.Element {
 
               {/* only clickable for employers */}
               {role === "employer" ? 
-                (
+                ( 
+                 <>
                 <NavLink to="/add-job" className={activeStyle}>Add Job</NavLink>
+                <NavLink to="/company-profile" className={activeStyle}>
+                  Company Profile
+                </NavLink>
+                </> 
                 ) : role === "applicant" ? 
                 (
                 <span
@@ -52,14 +57,8 @@ function Navbar(): JSX.Element {
                   >
                     Add Job
                   </span>
-                )}
-
-                <NavLink to="/company-profile" className={activeStyle}>
-                  Company Profile
-                </NavLink>
-
+                )}   
             </div>
-
 
 
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -73,6 +72,7 @@ function Navbar(): JSX.Element {
                     borderRadius: "20px"
                   }}>
                     {role === "employer" ? "Employer" : "Applicant"}
+                    {fullName}
                   </span>
 
                   <Button

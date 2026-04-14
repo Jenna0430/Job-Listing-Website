@@ -8,6 +8,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   role: "employer" | "applicant" | null;
+  fullName: string | null;
   loading: boolean;
   authModalOpen: boolean;
   openAuthModal: () => void;
@@ -23,6 +24,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }): JSX.E
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [role, setRole] = useState<"employer" | "applicant" | null>(null);
+  const [fullName, setFullName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [authModalOpen, setAuthModalOpen] = useState(false);
 
@@ -33,6 +35,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }): JSX.E
   const extractRole = (user: User | null): "employer" | "applicant" | null => {
     return (user?.user_metadata?.role as "employer" | "applicant") ?? null;
   };
+  const extractFullName = (user: User | null): string | null => {
+    return user?.user_metadata?.full_name ?? null;
+  };
 
   useEffect(() => {
     // check for an existing session
@@ -40,6 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }): JSX.E
       setSession(session);
       setUser(session?.user ?? null);
       setRole(extractRole(session?.user ?? null));
+      setFullName(extractFullName(session?.user ?? null));
       setLoading(false);
     });
 
@@ -49,6 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }): JSX.E
         setSession(session);
         setUser(session?.user ?? null);
         setRole(extractRole(session?.user ?? null));
+        setFullName(extractFullName(session?.user ?? null));
         setLoading(false);
       }
     );
@@ -59,13 +66,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }): JSX.E
   const signUp = async (
     email: string,
     password: string,
-    role: "employer" | "applicant"
+    role: "employer" | "applicant",
+    fullName: string
   ): Promise<string | null> => {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { role }, // store role in user metadata
+        data: { role, full_name: fullName }, // store role and full name in user metadata
       },
     });
     if (error) return error.message;
@@ -91,7 +99,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }): JSX.E
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, role, loading, authModalOpen, openAuthModal, closeAuthModal, signUp, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, session, role, fullName, loading, authModalOpen, openAuthModal, closeAuthModal, signUp, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );
