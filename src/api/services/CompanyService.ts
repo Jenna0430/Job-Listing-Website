@@ -1,7 +1,7 @@
 import supabase from "../SupabaseClient";
 import { ok, fail, parseError } from "../ApiResult";
 import type { ApiResult } from "../ApiResult";
-import type { Company } from "../../types/job.types";
+import type { Company } from "../../type/job.types";
 
 export interface CompanyFormData {
   name: string;
@@ -40,10 +40,10 @@ export const getCompanyByOwner = async (
       .from("companies")
       .select("*")
       .eq("owner_id", ownerId)
-      .single();
+      .maybeSingle();
 
     // PGRST116 means "no rows found" 
-    if (error?.code === "PGRST116") return ok(null);
+    if (error?.code === "PGRST_NO_ROWS") return ok(null);
     if (error) return fail(parseError(error));
     return ok(data);
 

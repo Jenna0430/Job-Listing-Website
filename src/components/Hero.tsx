@@ -1,13 +1,13 @@
 import { Divider } from "@mui/material";
 import type { JSX } from "react";
 
-
 interface HeroProps {
     title?: string;
     subtitle?: string;
 }
 
-function Hero({ title="Discover new jobs with us", subtitle="Tell us about your experience and skills." }: HeroProps): JSX.Element {   
+function Hero({ title, subtitle}: HeroProps): JSX.Element {  
+
     return (
         <>
         <Divider />

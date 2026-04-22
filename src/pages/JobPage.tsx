@@ -2,19 +2,21 @@ import { useState, type JSX } from "react";
 import { useParams, useLoaderData, Link, useNavigate } from "react-router-dom";
 import { Box, Button, Card, CardContent } from "@mui/material";
 import { useAuth } from "../context/AuthContext";
-import supabase from "../api/SupabaseClient";
-import type { Job } from "../types/job.types";
+import type { Job } from "../type/job.types";
+import { deleteJob, getJobById, type ApiResult } from "../api";
 
 
 export const jobLoader = async ({ params }: 
     { params?: { id: string }; }): Promise<Job> => {
-    const { data, error } = await supabase.from("jobs").select("*, companies(*)").eq("id", params?.id).single();
-
-    if (error || !data) {
-      throw new Error(error?.message || "Job not found");
-    }
-
-    return data;  
+      const id = params?.id;
+        if (!id) throw new Error("No job ID provided.");
+      
+        const result: ApiResult<Job | null> = await getJobById(id);
+      
+        if (!result.success) throw new Error(result.error);
+        if (!result.data)    throw new Error("Job not found.");
+      
+        return result.data;
     } 
 
   function JobPage(): JSX.Element {
@@ -40,15 +42,12 @@ export const jobLoader = async ({ params }:
       const confirmDelete = window.confirm("Are you sure you want to delete this job?");
       if (!confirmDelete) return;
 
-      const { error } = await supabase.from("jobs").delete().eq("id", job.id);
-      if (error) {
-        console.error("Error deleting job:", error);
-        return;
+      const result = await deleteJob(job.id);
+      if(result.success) {
+          navigate("/jobs");
       }
-      navigate("/jobs");
+     
     }
-
-
 
     return (
       <div style={{ padding: "40px", backgroundColor: "var(--primary-color-light)", color: "var(--text-color)"}}>
@@ -76,13 +75,13 @@ export const jobLoader = async ({ params }:
           <Card sx={{ marginTop: "20px", width: "350px", boxShadow: "1px 1px 5px var(--primary-color)" }}>
             <CardContent>
               <h3>Company Info</h3>
-              <p>{job.companies.name}</p>
-              <p>Founded: {job.companies.year_founded}</p>
-              <p>{job.companies.description}</p>
+              <p>{job.companies?.name }</p>
+              <p>Founded: {job.companies?.year_founded}</p>
+              <p>{job.companies?.description}</p>
               <p>Contact Email: </p>
-              <p style={{ backgroundColor: "var(--primary-color-light)", padding: "10px" }}>{job.companies.contact_email}</p>
+              <p style={{ backgroundColor: "var(--primary-color-light)", padding: "10px" }}>{job.companies?.contact_email}</p>
               <p>Contact Phone: </p>
-              <p style={{ backgroundColor: "var(--primary-color-light)", padding: "10px" }}>{job.companies.contact_phone}</p>
+              <p style={{ backgroundColor: "var(--primary-color-light)", padding: "10px" }}>{job.companies?.contact_phone}</p>
               {role === "employer" ? "" : (
               <Link to="/apply">
                 <Button 

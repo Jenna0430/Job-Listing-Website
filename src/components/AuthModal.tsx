@@ -43,7 +43,7 @@ function AuthModal({ open, onClose }: AuthModalProps): JSX.Element {
       ? await signIn(email, password)
       : await signUp(email, password, role, fullName);
 
-    if(result === "A confirmation email has been sent. Please check your inbox.") { 
+    if(result === "CHECK_EMAIL") { 
       setLoading(false);
       setEmailSent(true);
       return;
@@ -110,14 +110,6 @@ function AuthModal({ open, onClose }: AuthModalProps): JSX.Element {
           <Box component="form" onSubmit={handleSubmit} sx={{ display: "flex", flexDirection: "column", gap: "16px" }}>
 
             <TextField
-              label="Full Name"
-              type="text"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              fullWidth
-              required
-            />
-            <TextField
               label="Email"
               type="email"
               value={email}
@@ -136,6 +128,15 @@ function AuthModal({ open, onClose }: AuthModalProps): JSX.Element {
             />
 
             {tab === 1 && (
+              <>
+              <TextField
+              label="Full Name"
+              type="text"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              fullWidth
+              required
+            />
               <Box sx={{ display: "flex", gap: "12px" }}>
                 {(["employer", "applicant"] as const).map((r) => (
                   <Button
@@ -155,6 +156,7 @@ function AuthModal({ open, onClose }: AuthModalProps): JSX.Element {
                   </Button>
                 ))}
               </Box>
+              </>
             )}
 
             {/* Error message */}

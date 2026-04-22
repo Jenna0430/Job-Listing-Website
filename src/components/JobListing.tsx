@@ -3,20 +3,13 @@ import { useState } from "react"
 import { Link } from "react-router-dom";
 import type { JSX } from "react";
 import { useAuth } from "../context/AuthContext";
+import type { Job } from "../type/job.types";
 
 
 interface JobListingProps {
-    job: {
-        id: number;
-        type: string;
-        title: string;
-        description: string;
-        salary: number | string;
-        location: string;
-        posted_by?: string; // user ID of the poster
-    }
+    job: Job;
 }
-export type job = JobListingProps["job"];
+
 
 function JobListing({ job }: JobListingProps): JSX.Element {
 
@@ -40,6 +33,12 @@ function JobListing({ job }: JobListingProps): JSX.Element {
         </button>
         <h3>Salary: {job.salary}/Year</h3>
         <p>{job.location}</p>
+
+          {job.companies?.name && (
+            <p style={{ color: "gray", fontSize: "0.85rem" }}>
+              {job.companies.name}
+            </p>
+          )}
 
         <Link to={`/jobs/${job.id}`} style={{ textDecoration: "none" }}>
         <Button

@@ -3,9 +3,8 @@ import JobListing from "./JobListing"
 import { Grid, Box, CircularProgress, Typography } from "@mui/material"
 import type { JSX } from "react";
 import type { Job } from "../type/job.types";
-
 import { useAuth } from "../context/AuthContext";
-import supabase from "../api/SupabaseClient";
+import { getAllJobs, getEmployerJobs} from "../api"
 
 interface JobListingsProps {
   isHomePage?: boolean;
@@ -13,46 +12,39 @@ interface JobListingsProps {
 
 function JobListings({ isHomePage = false }: JobListingsProps):  JSX.Element {
 
-  const { user, role } = useAuth();
+  const { user, role, loading: authLoading } = useAuth();
   const [listJobs, setListJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
    useEffect(() => {
 
-    if(!user && !loading) {
-      setListJobs([]);
-    }
+    if (authLoading) return;
+
+    if (!user) setListJobs([]);
 
     const fetchJobs = async (): Promise<void> => {
         setLoading(true);
         setFetchError(null);
 
-        let query = supabase.from("jobs").select("*, companies(*)").order("created_at", { ascending: false });
-
-        if (role === "employer" && user) {
-          query = query.eq("posted_by", user.id); // only their jobs
+        const result = role === "employer" && user ?
+        await getEmployerJobs(user.id, isHomePage ? 3 : undefined) :
+        await getAllJobs(isHomePage ? 3 : undefined)
+        
+        if (!result.success){
+            setFetchError(result.error);
+            setLoading(false);
+            return;
         }
 
-        if (isHomePage) { 
-          query = query.limit(3); // only recent 3 for homepage
-        }
-
-        const { data, error } = await query;
-
-        if (error) {
-          setFetchError(error.message);
-          setLoading(false);
-          return;
-        }
-          
-        setListJobs(data ?? []);
+        setListJobs(result.data);
         setLoading(false);
 
-      }
+    };
         
       fetchJobs();
-    }, [isHomePage, role, user]);
+
+    }, [isHomePage, role, user, authLoading]);
 
        
   return (

@@ -6,7 +6,7 @@ import type { SelectChangeEvent } from "@mui/material";
 import type { JSX } from "react";
 import { useNavigate } from "react-router-dom";
 import InputComponent from "./InputComponent";
-import type { FieldConfig, FormConfig } from "../types/form.types";
+import type { FieldConfig, FormConfig } from "../type/form.type";
 
 interface FormPageProps {
   config: FormConfig;   // The current values of every field, keyed by field name

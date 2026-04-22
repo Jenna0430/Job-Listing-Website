@@ -13,7 +13,7 @@ interface AuthContextType {
   authModalOpen: boolean;
   openAuthModal: () => void;
   closeAuthModal: () => void;
-  signUp: (email: string, password: string, role: "employer" | "applicant") => Promise<string | null>;
+  signUp: (email: string, password: string, role: "employer" | "applicant", fullName: string) => Promise<string | null>;
   signIn: (email: string, password: string) => Promise<string | null>;
   signOut: () => Promise<void>;
 }
@@ -33,8 +33,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }): JSX.E
 
   // Extract role from user metadata
   const extractRole = (user: User | null): "employer" | "applicant" | null => {
-    return (user?.user_metadata?.role as "employer" | "applicant") ?? null;
+    const r = user?.user_metadata?.role;
+    if (r === "admin") return null;
+    return(r as "employer" | "applicant") ?? null;
   };
+
   const extractFullName = (user: User | null): string | null => {
     return user?.user_metadata?.full_name ?? null;
   };
@@ -69,18 +72,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }): JSX.E
     role: "employer" | "applicant",
     fullName: string
   ): Promise<string | null> => {
+
+    if ((role as string) === "admin") {
+      return "Invalid role";
+    }
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { role, full_name: fullName }, // store role and full name in user metadata
+        data: { role, fullName: fullName }, // store role and full name in user metadata
       },
     });
     if (error) return error.message;
 
-    if (data?.user && !data?.session) {
-      return "A confirmation email has been sent. Please check your inbox.";
-    }
+    if (data?.user && !data?.session) return "CHECK_EMAIL"; // email sent, awaiting confirmation
 
     if (data?.user && data?.session) {
       return null; // success
@@ -90,8 +96,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }): JSX.E
   };
 
   const signIn = async (email: string, password: string): Promise<string | null> => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return error ? error.message : null;
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (error) return error.message;
+    
+   // Check the profile role: admins are not allowed in this app
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role, is_banned")
+      .eq("id", data.user.id)
+      .single();
+ 
+    if (profile?.is_banned) {
+      await supabase.auth.signOut();
+      return "Your account has been suspended. Please contact support.";
+    }
+ 
+    if (profile?.role === "admin") {
+      await supabase.auth.signOut();
+      return "This account is not valid for this application.";
+    }
+ 
+    return null;
+
   };
 
   const signOut = async (): Promise<void> => {

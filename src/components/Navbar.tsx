@@ -3,14 +3,13 @@ import { AppBar, Box, Toolbar, Button } from '@mui/material';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import type { JSX } from 'react';
-import type { NavLinkProps } from 'react-router-dom';
+
 
 
 function Navbar(): JSX.Element {
   const { user, role, signOut, openAuthModal, fullName } = useAuth();
 
-
-  const activeStyle: NavLinkProps['className'] = ({ isActive }) =>
+  const activeStyle = ({ isActive }: { isActive: boolean }): string =>
     isActive ? 'nav-link active' : 'nav-link';
 
   return (
@@ -31,36 +30,17 @@ function Navbar(): JSX.Element {
               <NavLink to="/jobs" className={activeStyle}>Jobs</NavLink>
 
               {/* only clickable for employers */}
-              {role === "employer" ? 
-                ( 
-                 <>
-                <NavLink to="/add-job" className={activeStyle}>Add Job</NavLink>
-                <NavLink to="/company-profile" className={activeStyle}>
-                  Company Profile
+              {role == "employer" && (
+                <>
+                  <NavLink to="/add-job" className={activeStyle}>Add Job</NavLink>
+                  <NavLink to="/company-profile" className={activeStyle}>
+                    Company Profile
                 </NavLink>
                 </> 
-                ) : role === "applicant" ? 
-                (
-                <span
-                  className="nav-link"
-                  style={{ opacity: 0.4, cursor: "not-allowed" }}
-                  title={user ? "Only job employers can add jobs" : "Sign in as a job employer to add jobs"}
-                >
-                  Add Job
-                </span>
-                ) : (
-                    <span
-                    className="nav-link"
-                    style={{ cursor: "pointer" }}
-                    onClick={openAuthModal}
-                    title="Sign in to post a job"
-                  >
-                    Add Job
-                  </span>
-                )}   
+                ) } 
             </div>
 
-
+              {/* Auth Buttons and User Info */}
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
               {user ? (
                 <>
@@ -71,10 +51,10 @@ function Navbar(): JSX.Element {
                     padding: "4px 10px",
                     borderRadius: "20px"
                   }}>
-                    {role === "employer" ? "Employer" : "Applicant"}
-                    {fullName}
+                    {role === "employer" ? "Employer" : "Applicant"} - {fullName ?? user.email}
                   </span>
 
+                  <NavLink to="/">
                   <Button
                     onClick={signOut}
                     variant="outlined"
@@ -83,6 +63,7 @@ function Navbar(): JSX.Element {
                   >
                     Sign Out
                   </Button>
+                  </NavLink>
                 </>
               ) : (
                 <Button

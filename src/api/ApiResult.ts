@@ -20,3 +20,5 @@ export const DB_ERROR_CODES = {
     NOT_NULL_VIOLATION: "23502",
 } as const;
 
+export const PGRST_NO_ROWS = "PGRST116";
+

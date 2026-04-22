@@ -44,7 +44,7 @@ export const createJob = async (
 // Fetch all jobs (for guest/applicant view)
 export const getAllJobs = async (limit?: number): Promise<ApiResult<Job[]>> => {
   try {
-    let query = supabase.from("jobs").select("*, companies(*)");
+    let query = supabase.from("jobs").select("*, companies(*)").eq("is_active", true).order("created_at", {ascending: false});
 
     if (limit) {
       query = query.limit(limit);
@@ -68,7 +68,8 @@ export const getEmployerJobs = async (
     let query = supabase
       .from("jobs")
       .select("*, companies(*)")
-      .eq("posted_by", employerId);
+      .eq("posted_by", employerId)
+      .order("created_at", {ascending: false});
 
     if (limit) {
       query = query.limit(limit);
@@ -102,7 +103,7 @@ export const getJobById = async (id: string): Promise<ApiResult<Job>> => {
 };
 
 // Partial type for updating a job — all fields optional except posted_by and company_id which should never be updated
-export type UpdateJobData = Partial<Omit<CreateJobData, "posted_by" | "company_id">>;
+export type UpdateJobData = Partial<Omit<CreateJobData, "posted_by" | "company_id">> & {is_active?: boolean};
 
 
 // Update an existing job posting
@@ -140,4 +141,12 @@ export const deleteJob = async (id: string): Promise<ApiResult<null>> => {
   } catch (error) {
     return fail(parseError(error));
   }
+};
+
+// Convenience toggle for the employer dashboard active/inactive switch
+export const toggleJobActive = async (
+  id: string,
+  isActive: boolean
+): Promise<ApiResult<Job>> => {
+  return updateJob(id, { is_active: isActive });
 };

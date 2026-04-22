@@ -1,8 +1,4 @@
-import {
-  Box,
-  Button,
-  Typography,
-} from "@mui/material";
+import { Box, Button, Typography,} from "@mui/material";
 import { useEffect, useState } from "react";
 import type { JSX } from "react";
 import type { SelectChangeEvent } from "@mui/material";
@@ -12,11 +8,22 @@ import { useAuth } from "../context/AuthContext";
 import supabase from "../api/SupabaseClient";
 import { useNavigate } from "react-router-dom";
 import type { Company } from "../type/job.types";
+import { createJob, DB_ERROR_CODES, getCompanyByOwner,  } from "../api";
 
 
 function AddJobPage(): JSX.Element {
 
-  const [formData, setFormData] = useState<Record<string, string>>({
+
+  interface JobFormData {
+    [key: string]: string;
+    title: string,
+    description: string,
+    location: string,
+    salary: string,
+    type: string
+  }
+
+  const [formData, setFormData] = useState<JobFormData>({
   title: "",
   description: "",
   location: "",
@@ -30,23 +37,31 @@ function AddJobPage(): JSX.Element {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [company, setCompany] = useState<Company | null>(null);
   const [loadingCompany, setLoadingCompany] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   //fetch the company profile
-
   useEffect(() => {
     const fetchCompany = async (): Promise<void> => {
-      if (!user) return;
+      if (!user) {
+        setLoadingCompany(false);
+        return;
+      }
 
-      const { data } = await supabase
-        .from("companies")
-        .select("*")
-        .eq("owner_id", user.id)
-        .single();
+      const result = await getCompanyByOwner(user.id);
 
-      setCompany(data ?? null);
-      setLoadingCompany(false);
+      if(result.success) {
+        const company = result.data;
+        if(company){
+           setCompany(company ?? null);
+           setLoadingCompany(false);
+        }
+      }
+      else {
+        setFetchError(result.error);
+      }
+      setLoadingCompany(false);  
     };
-
     fetchCompany();
   }, [user]);
 
@@ -54,35 +69,22 @@ function AddJobPage(): JSX.Element {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSelectChange = (e: SelectChangeEvent): void => {
-    setFormData((prev) => ({ ...prev, type: e.target.value }));
-  };
 
-  const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>): Promise<void> => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     setSubmitError(null);
 
     if (!user || !company)  return;
 
-    const { error } = await supabase.from("jobs").insert([{
+    const result = await createJob({
       ...formData,
-      posted_by: user.id,
-      company_id: company.id, //associate the job with the company profile using the company ID as a foreign key
-    }]);
-    
-     if (error?.code === "23505") {
-      // 23505 is PostgreSQL's error code for unique constraint violation
-      setSubmitError(
-        `You have already posted a "${formData.title}" job in "${formData.location}". 
-         Please edit the existing posting instead.`
-      );
-      return;
-    }
+      posted_by:  user.id,
+      company_id: company.id,
+    });
 
-    if (error) {
-      setSubmitError(error.message);
-      return;
-    }
+    if(!result.success) {
+      setSubmitError(result.error); return;
+      }
 
     setFormData({
       title: "",
@@ -93,6 +95,30 @@ function AddJobPage(): JSX.Element {
     });
     setIsModalOpen(true);
   };
+
+
+  if (!loadingCompany && company && company.status !== "verified") {
+  return (
+    <Box sx={{ maxWidth: "600px", margin: "40px auto", padding: "0 20px", textAlign: "center" }}>
+      <Typography variant="h5" sx={{ marginBottom: "16px" }}>
+        {company.status === "pending" ? "Approval Pending" : "Profile Rejected"}
+      </Typography>
+      <Typography sx={{ color: "gray", marginBottom: "24px" }}>
+        {company.status === "pending"
+          ? "Your company profile is awaiting admin approval. You will be able to post jobs once verified."
+          : `Your company profile was rejected. ${company.rejection_reason ? `Reason: ${company.rejection_reason}` : ""}`
+        }
+      </Typography>
+      <Button
+        variant="outlined"
+        onClick={() => navigate("/company-profile")}
+        sx={{ backgroundColor: "var(--primary-color)"}}
+      >
+        View Company Profile
+      </Button>
+    </Box>
+  );
+}
 
   if(!loadingCompany && !company) {
      return (
@@ -124,7 +150,6 @@ function AddJobPage(): JSX.Element {
           cancelPath: "/jobs",
           fields: [
             {
-              // Display field — shows company name but cannot be edited
               name: "company",
               label: "Company",
               type: "display",
@@ -166,7 +191,7 @@ function AddJobPage(): JSX.Element {
             },
             {
               name: "salary",
-              label: "Salary in FCFA",
+              label: "Salary",
               required: true,
               validators: [required("Salary")],
             },

@@ -2,7 +2,8 @@
 :root {
     --primary-color: rgb(10, 65, 102);
     --primary-color-light: rgba(10, 65, 102, 0.1);
-    --secondary-color: #e5273c;
+    --secondary-color: rgb(229, 39, 60);
+    --secondary-color-light: rgb(229, 39, 60, 0.1);
     --text-color: #333;
 }
 

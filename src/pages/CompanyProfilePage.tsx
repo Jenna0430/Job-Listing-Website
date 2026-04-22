@@ -1,13 +1,33 @@
-import { Box, Button, Typography } from "@mui/material";
+import { Box, Button, Chip, Typography, Divider } from "@mui/material";
 import { useState, useEffect } from "react";
 import type { JSX } from "react";
-import supabase from "../api/SupabaseClient";
 import { useAuth } from "../context/AuthContext";
 import { FormPage, ModalComponent } from "../components";
 import { required, minLength, maxLength, email, phone, date } from "../helper/FormValidator";
-import type { Company } from "../types/job.types";
+import type { Company } from "../type/job.types";
 import { Link } from "react-router-dom";
+import { getCompanyByOwner, createCompany, updateCompany } from "../api";
 
+interface CompanyFormData {
+  [key: string]: string;
+  name: string;
+  description: string;
+  contact_email: string;
+  contact_phone: string;
+  year_founded: string;
+}
+
+// Maps company status to a MUI Chip color
+const statusChip = (status: Company["status"]): JSX.Element => {
+  const map = {
+    pending:  { label: "Pending Approval", color: "error" },
+    verified: { label: "Verified",         color: "success" },
+    rejected: { label: "Rejected",         color: "error"   },
+  } as const;
+
+  const { label, color } = map[status] ?? map.pending;
+  return <Chip label={label} color={color} size="small" />;
+};
 
 function CompanyProfilePage(): JSX.Element {
   const { user } = useAuth();
@@ -16,8 +36,9 @@ function CompanyProfilePage(): JSX.Element {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
-  const [formData, setFormData] = useState<Record<string, string>>({
+  const [formData, setFormData] = useState<CompanyFormData>({
     name: "",
     description: "",
     contact_email: "",
@@ -25,38 +46,40 @@ function CompanyProfilePage(): JSX.Element {
     year_founded: "",
   });
 
-  // Check if employer already has a company profile
   useEffect(() => {
     const fetchCompany = async (): Promise<void> => {
-      if (!user) return;
-
-      const { data } = await supabase
-        .from("companies")
-        .select("*")
-        .eq("owner_id", user.id)
-        .single();
-
-      if (data) {
-        // Pre-fill form with existing data
-        setCompany(data);
-        setFormData({
-          name: data.name,
-          description: data.description ?? "",
-          contact_email: data.contact_email ?? "",
-          contact_phone: data.contact_phone ?? "",
-          year_founded: data.year_founded ?? "",
-        });
+      if (!user) {
+        setLoading(false);
+        return;
       }
 
-      setLoading(false);
+      const result = await getCompanyByOwner(user.id);
+
+      if (result.success) {
+        const company = result.data;
+        if (company) {
+          setCompany(company);
+          setFormData({
+            name:          company.name,
+            description:   company.description   ?? "",
+            contact_email: company.contact_email ?? "",
+            contact_phone: company.contact_phone ?? "",
+            year_founded:  company.year_founded  ?? "",
+          });
+        }
+      } else {
+        setFetchError(result.error);
+      }
+
+      setLoading(false); 
     };
 
     fetchCompany();
   }, [user]);
 
   const handleChange = (name: string, value: string): void => {
-     setFormData((prev) => ({ ...prev, [name]: value }));
-  }
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
 
   const handleSubmit = async (
     e: React.FormEvent<HTMLFormElement>
@@ -68,107 +91,184 @@ function CompanyProfilePage(): JSX.Element {
     if (!user) return;
 
     if (company) {
-      // Company exists — update it
-      const { error } = await supabase
-        .from("companies")
-        .update(formData)
-        .eq("owner_id", user.id);
-
-      if (error) { setSubmitError(error.message); return; }
+      const result = await updateCompany(formData, user.id);
+      if (!result.success) { setSubmitError(result.error); return; }
       setSuccessMessage("Company profile updated successfully!");
-
     } else {
-      // No company yet — create it
-      const { error } = await supabase
-        .from("companies")
-        .insert([{ ...formData, owner_id: user.id }]);
-
-      if (error) { setSubmitError(error.message); return; }
+      const result = await createCompany(formData, user.id);
+      if (!result.success) { setSubmitError(result.error); return; }
       setIsModalOpen(true);
       setSuccessMessage("Company profile created successfully!");
     }
   };
 
-  if (loading) return <Typography>Loading...</Typography>;
+  if (loading) {
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", padding: "60px" }}>
+        <Typography>Loading...</Typography>
+      </Box>
+    );
+  }
 
-  return company ?   
-        <Box sx={{ maxWidth: "600px", height: "100%", margin: "8% auto", padding: "0 20px" }}>
-           <h1>Company Profile</h1>
-            <Box >
-                <p>Company Name: {company.name}</p>
-                <p>Company Description: {company.description}</p>
-                <p>Contact Email: {company.contact_email}</p>
-                <p>Contact Phone: {company.contact_phone}</p>
-                <p>Year Founded: {company.year_founded}</p>
-            </Box>
-                <Link to="/edit-company-profile">
-                <Button
-                    type="submit"
-                    variant="contained"
-                    sx={{ backgroundColor: "var(--primary-color)", color: "white", padding: "12px" }}
-                    >Edit Profile
-                    </Button>
-                </Link>
-            </Box>
-   : 
-   <>
-   <FormPage
-        config = {{
+  if (fetchError) {
+    return (
+      <Box sx={{ maxWidth: "600px", margin: "40px auto", padding: "0 20px" }}>
+        <Typography color="error">{fetchError}</Typography>
+      </Box>
+    );
+  }
+
+  // Company exists show profile 
+  if (company) {
+    const isPending  = company.status === "pending";
+    const isRejected = company.status === "rejected";
+
+    return (
+      <Box sx={{ maxWidth: "600px", margin: "40px auto", padding: "0 20px" }}>
+
+        {/* Header row */}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 1 }}>
+          <Typography variant="h4">Company Profile</Typography>
+          {statusChip(company.status)}
+        </Box>
+
+        <Divider sx={{ mb: 3 }} />
+
+        {/* Pending notice */}
+        {isPending && (
+          <Box
+            sx={{
+              mb: 3,
+              p: 2,
+              borderRadius: 2,
+              bgcolor: "var(--secondary-color-light)",
+              border: "1px solid",
+              borderColor: "var(--secondary-color)",
+            }}
+          >
+            <Typography variant="body2" color="var(--secondary-color)" fontWeight={600}>
+              Your company is pending admin approval.
+            </Typography>
+            <Typography variant="body2" color="var(--secondary-color)" mt={0.5}>
+              You will be able to post jobs once your profile has been verified.
+            </Typography>
+          </Box>
+        )}
+
+        {/* Rejected notice */}
+        {isRejected && (
+          <Box
+            sx={{
+              mb: 3,
+              p: 2,
+              borderRadius: 2,
+              bgcolor: "error.light",
+              border: "1px solid",
+              borderColor: "error.main",
+            }}
+          >
+            <Typography variant="body2" color="error.dark" fontWeight={600}>
+              Your company profile was rejected.
+            </Typography>
+            {company.rejection_reason && (
+              <Typography variant="body2" color="error.dark" mt={0.5}>
+                Reason: {company.rejection_reason}
+              </Typography>
+            )}
+            <Typography variant="body2" color="error.dark" mt={0.5}>
+              Please update your profile and contact support if you need help.
+            </Typography>
+          </Box>
+        )}
+
+        {/* Company details */}
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mb: 3 }}>
+          <Typography><strong>Name:</strong> {company.name}</Typography>
+          <Typography><strong>Description:</strong> {company.description}</Typography>
+          <Typography><strong>Contact Email:</strong> {company.contact_email}</Typography>
+          <Typography><strong>Contact Phone:</strong> {company.contact_phone}</Typography>
+          <Typography><strong>Year Founded:</strong> {company.year_founded}</Typography>
+        </Box>
+
+        {/* Action buttons */}
+        <Box sx={{ display: "flex", gap: 2 }}>
+          <Link to="/edit-company-profile">
+            <Button
+              variant="outlined"
+              sx={{ padding: "12px", backgroundColor: "var(--primary-color)", color: "white" }}
+            >
+              Edit Profile
+            </Button>
+          </Link>         
+        </Box>
+
+      </Box>
+    );
+  }
+
+  // No company yet show create form
+  return (
+    <>
+      <FormPage
+        config={{
           title: "Create Company Profile",
           subtitle: "You need a company profile before you can post jobs.",
           submitLabel: "Create Profile",
           fields: [
             {
-            name: "name",
-            label: "Company Name",
-            type: "text",
-            required: true,
-            validators: [required("Company Name")],
+              name: "name",
+              label: "Company Name",
+              type: "text",
+              required: true,
+              validators: [required("Company Name")],
             },
             {
-            name: "contact_email",
-            label: "Contact Email",
-            type: "email",
-            required: true,
-            validators: [required("Contact Email"), email],
+              name: "contact_email",
+              label: "Contact Email",
+              type: "email",
+              required: true,
+              validators: [required("Contact Email"), email],
             },
             {
-            name: "contact_phone",
-            label: "Contact Phone",
-            type: "tel",
-            required: true,
-            validators: [required("Contact Phone"), phone],
+              name: "contact_phone",
+              label: "Contact Phone",
+              type: "tel",
+              required: true,
+              validators: [required("Contact Phone"), phone],
             },
             {
-            name: "year_founded",
-            label: "Year Founded",
-            type: "text",
-            validators: [date],
+              name: "year_founded",
+              label: "Year Founded",
+              type: "text",
+              validators: [date],
             },
             {
-            name: "description",
-            label: "Company Description",
-            type: "textarea",
-            rows: 4,
-            required: true,
-            validators: [required("Company Description"), minLength("Company Description", 20), maxLength("Company Description", 500)],
-            }
-            ]
+              name: "description",
+              label: "Company Description",
+              type: "textarea",
+              rows: 4,
+              required: true,
+              validators: [
+                required("Company Description"),
+                minLength("Company Description", 20),
+                maxLength("Company Description", 500),
+              ],
+            },
+          ],
         }}
         formValues={formData}
         onSubmit={handleSubmit}
         submitError={submitError}
-        successMessage={null}
+        successMessage={successMessage}
         onChange={handleChange}
       />
-        <ModalComponent
+      <ModalComponent
         open={isModalOpen}
-        message="profile created successfully!"
+        message="Profile created successfully! Your company is now pending admin approval."
         onClose={() => setIsModalOpen(false)}
       />
-    </>     
-   
+    </>
+  );
 }
-  
 
 export default CompanyProfilePage;
