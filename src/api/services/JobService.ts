@@ -14,6 +14,12 @@ export interface CreateJobData {
   company_id: string;
 }
 
+export interface JobFilters {
+  search?:   string;
+  type?:     string;
+  location?: string;
+}
+
 
 // Create a new job
 export const createJob = async (
@@ -42,13 +48,18 @@ export const createJob = async (
 };
 
 // Fetch all jobs (for guest/applicant view)
-export const getAllJobs = async (limit?: number): Promise<ApiResult<Job[]>> => {
+export const getAllJobs = async (filters?: JobFilters, limit?: number): Promise<ApiResult<Job[]>> => {
   try {
     let query = supabase.from("jobs").select("*, companies(*)").eq("is_active", true).order("created_at", {ascending: false});
 
-    if (limit) {
-      query = query.limit(limit);
+     if (filters?.search) {
+      query = query.or(
+        `title.ilike.%${filters.search}%,description.ilike.%${filters.search}%`
+      );
     }
+    if (filters?.type)     query = query.eq("type", filters.type);
+    if (filters?.location) query = query.ilike("location", `%${filters.location}%`);
+    if (limit)             query = query.limit(limit);
 
     const { data, error } = await query;
     if (error) return fail(parseError(error));

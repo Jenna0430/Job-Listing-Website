@@ -1,5 +1,5 @@
-import { useState, type JSX } from "react";
-import { useParams, useLoaderData, Link, useNavigate } from "react-router-dom";
+import { type JSX } from "react";
+import { useLoaderData, Link, useNavigate } from "react-router-dom";
 import { Box, Button, Card, CardContent } from "@mui/material";
 import { useAuth } from "../context/AuthContext";
 import type { Job } from "../type/job.types";
@@ -21,14 +21,10 @@ export const jobLoader = async ({ params }:
 
   function JobPage(): JSX.Element {
 
-
     const job = useLoaderData() as Job;
     const { user, role, openAuthModal } = useAuth();
     const navigate = useNavigate();
     const isOwner = user?.id === job.posted_by;
-
-    console.log("Full job data:", job);
-    console.log("Companies data:", job.companies);
 
     const handleApplyClick = (): void => {
       if (!user) {

@@ -1,10 +1,8 @@
-import { useState, useEffect } from "react";
 import JobListing from "./JobListing"
 import { Grid, Box, CircularProgress, Typography } from "@mui/material"
 import type { JSX } from "react";
-import type { Job } from "../type/job.types";
 import { useAuth } from "../context/AuthContext";
-import { getAllJobs, getEmployerJobs} from "../api"
+import { useJobListings } from "../hooks/genaralHooks";
 
 interface JobListingsProps {
   isHomePage?: boolean;
@@ -12,39 +10,8 @@ interface JobListingsProps {
 
 function JobListings({ isHomePage = false }: JobListingsProps):  JSX.Element {
 
-  const { user, role, loading: authLoading } = useAuth();
-  const [listJobs, setListJobs] = useState<Job[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
-
-   useEffect(() => {
-
-    if (authLoading) return;
-
-    if (!user) setListJobs([]);
-
-    const fetchJobs = async (): Promise<void> => {
-        setLoading(true);
-        setFetchError(null);
-
-        const result = role === "employer" && user ?
-        await getEmployerJobs(user.id, isHomePage ? 3 : undefined) :
-        await getAllJobs(isHomePage ? 3 : undefined)
-        
-        if (!result.success){
-            setFetchError(result.error);
-            setLoading(false);
-            return;
-        }
-
-        setListJobs(result.data);
-        setLoading(false);
-
-    };
-        
-      fetchJobs();
-
-    }, [isHomePage, role, user, authLoading]);
+  const { role } = useAuth();
+  const { data: listJobs = [], isLoading: loading, error } = useJobListings(isHomePage);
 
        
   return (
@@ -63,9 +30,11 @@ function JobListings({ isHomePage = false }: JobListingsProps):  JSX.Element {
          <Box sx={{ display: "flex", justifyContent: "center", padding: "40px" }}>
           <CircularProgress sx={{ color: "var(--primary-color)" }} />
         </Box>
-        ) :  fetchError ? (
+        ) :  error ? (
            <Box sx={{ textAlign: "center", width: "100%", padding: "40px" }}>
-            <Typography color="error">{fetchError}</Typography>
+            <Typography color="error">
+              {error instanceof Error ? error.message : "Failed to load jobs"}
+              </Typography>
           </Box>
         ) : listJobs.length === 0 ? (
             <Box sx={{ textAlign: "center", width: "100%", padding: "40px" }}>
